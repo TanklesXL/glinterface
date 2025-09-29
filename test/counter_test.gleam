@@ -1,27 +1,31 @@
-import gleeunit
-import gleeunit/should
-import glinterface.{add, impl, init, map, wrap}
 import gleam/function.{identity}
+import gleam/int
 import gleam/list
+import gleeunit
+import glinterface.{add, impl, init, map, wrap}
 
 pub fn main() {
   gleeunit.main()
 }
 
+fn curry3(f: fn(a, b, c) -> d) -> fn(a) -> fn(b) -> fn(c) -> d {
+  fn(a) { fn(b) { fn(c) { f(a, b, c) } } }
+}
+
 pub fn int_counter_test() {
   let c = int_counter(1)
   let c = c.record.up(2)
-  should.equal(c.record.value, 3)
+  assert c.record.value == 3
   let c = c.record.down(10)
-  should.equal(c.record.value, -7)
+  assert c.record.value == -7
 }
 
 pub fn list_counter_test() {
   let c = list_counter(1)
   let c = c.record.up(2)
-  should.equal(c.record.value, 3)
+  assert c.record.value == 3
   let c = c.record.down(10)
-  should.equal(c.record.value, 0)
+  assert c.record.value == 0
 }
 
 /// type Counter
@@ -49,12 +53,12 @@ type CounterRecord {
 ///         |> init (\raise rep -> raise rep)
 ///
 fn int_counter(i: Int) -> Counter {
-  impl(function.curry3(CounterRecord))
-  |> wrap(fn(raise, rep) { fn(n) { raise(rep + n) } })
-  |> wrap(fn(raise, rep) { fn(n) { raise(rep - n) } })
+  impl(curry3(CounterRecord))
+  |> wrap(int.add)
+  |> wrap(int.subtract)
   |> add(identity)
   |> map(Counter)
-  |> init(fn(raise, n) { raise(n) }, i)
+  |> init(i)
 }
 
 /// listCounter : Int -> Counter
@@ -67,12 +71,10 @@ fn int_counter(i: Int) -> Counter {
 ///         |> init (\raise n -> raise (List.repeat n ()))
 ///
 fn list_counter(i: Int) -> Counter {
-  impl(function.curry3(CounterRecord))
-  |> wrap(fn(raise, rep) {
-    fn(n) { raise(list.append(list.repeat(Nil, n), rep)) }
-  })
-  |> wrap(fn(raise, rep) { fn(n) { raise(list.drop(rep, n)) } })
+  impl(curry3(CounterRecord))
+  |> wrap(fn(state, change) { list.append(state, list.repeat(Nil, change)) })
+  |> wrap(list.drop)
   |> add(list.length)
   |> map(Counter)
-  |> init(fn(raise, n) { raise(list.repeat(Nil, n)) }, i)
+  |> init(list.repeat(Nil, i))
 }

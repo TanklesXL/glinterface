@@ -10,11 +10,11 @@ pub fn impl(constructor: t) -> fn(raise, rep) -> t {
 /// wrap method pipeline raise rep =
 ///   method raise rep |> pipeline raise rep
 pub fn wrap(
-  pipeline: fn(raise, rep) -> fn(t) -> q,
-  method: fn(raise, rep) -> t,
-) -> fn(raise, rep) -> q {
+  pipeline: fn(fn(rep) -> sealed, rep) -> fn(fn(change) -> sealed) -> q,
+  method: fn(rep, change) -> rep,
+) -> fn(fn(rep) -> sealed, rep) -> q {
   fn(raise, rep) {
-    method(raise, rep)
+    fn(change) { raise(method(rep, change)) }
     |> pipeline(raise, rep)
   }
 }
@@ -37,10 +37,13 @@ pub fn add(
 /// map op pipeline raise rep =
 ///   pipeline raise rep |> op
 ///
-pub fn map(pipeline: fn(raise, rep) -> a, op: fn(a) -> b) -> fn(raise, rep) -> b {
+pub fn map(
+  pipeline: fn(raise, rep) -> a,
+  method: fn(a) -> b,
+) -> fn(raise, rep) -> b {
   fn(raise, rep) {
     pipeline(raise, rep)
-    |> op
+    |> method
   }
 }
 
@@ -53,16 +56,7 @@ pub fn map(pipeline: fn(raise, rep) -> a, op: fn(a) -> b) -> fn(raise, rep) -> b
 /// in
 /// initRep raise flags
 ///
-pub fn init(
-  pipeline: fn(fn(rep) -> sealed, rep) -> sealed,
-  init_rep: fn(fn(rep) -> sealed, flags) -> output,
-  flags: flags,
-) -> output {
-  raise(pipeline, _)
-  |> init_rep(flags)
-}
-
-fn raise(pipeline: fn(fn(rep) -> sealed, rep) -> sealed, rep: rep) -> sealed {
-  raise(pipeline, _)
+pub fn init(pipeline: fn(fn(rep) -> sealed, rep) -> sealed, rep: rep) -> sealed {
+  init(pipeline, _)
   |> pipeline(rep)
 }
