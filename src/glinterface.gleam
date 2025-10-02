@@ -1,62 +1,21 @@
-/// impl : t -> (raise -> rep -> t)
-/// impl constructor =
-///   \_ _ -> constructor
-///
-pub fn impl(constructor: t) -> fn(raise, rep) -> t {
-  fn(_, _) { constructor }
+pub fn impl(f) -> fn(raise, rep) -> b {
+  fn(_, _) { f() }
 }
 
-/// wrap : (raise -> rep -> t) -> (raise -> rep -> (t -> q)) -> (raise -> rep -> q)
-/// wrap method pipeline raise rep =
-///   method raise rep |> pipeline raise rep
-pub fn wrap(
-  pipeline: fn(fn(rep) -> sealed, rep) -> fn(fn(change) -> sealed) -> q,
+pub fn method(
   method: fn(rep, change) -> rep,
+  pipeline: fn(fn(change) -> sealed) -> fn(fn(rep) -> sealed, rep) -> q,
 ) -> fn(fn(rep) -> sealed, rep) -> q {
   fn(raise, rep) {
-    fn(change) { raise(method(rep, change)) }
-    |> pipeline(raise, rep)
+    pipeline(fn(change) { raise(method(rep, change)) })(raise, rep)
   }
 }
 
-/// add : (rep -> t) -> (raise -> rep -> (t -> q)) -> (raise -> rep -> q)
-/// add method pipeline raise rep =
-///   method rep |> pipeline raise rep
-///
-pub fn add(
-  pipeline: fn(raise, rep) -> fn(t) -> q,
-  method: fn(rep) -> t,
-) -> fn(raise, rep) -> q {
-  fn(raise, rep) {
-    method(rep)
-    |> pipeline(raise, rep)
-  }
-}
-
-/// map : (a -> b) -> (raise -> rep -> a) -> (raise -> rep -> b)
-/// map op pipeline raise rep =
-///   pipeline raise rep |> op
-///
-pub fn map(
-  pipeline: fn(raise, rep) -> a,
-  method: fn(a) -> b,
-) -> fn(raise, rep) -> b {
-  fn(raise, rep) {
-    pipeline(raise, rep)
-    |> method
-  }
-}
-
-/// init : ((rep -> sealed) -> flags -> output) -> ((rep -> sealed) -> rep -> sealed) -> flags -> output
-/// init initRep pipeline flags =
-///   let
-///     raise : rep -> sealed
-///     raise rep =
-///         pipeline raise rep
-/// in
-/// initRep raise flags
-///
-pub fn init(pipeline: fn(fn(rep) -> sealed, rep) -> sealed, rep: rep) -> sealed {
-  init(pipeline, _)
-  |> pipeline(rep)
+pub fn init(
+  with calculate_value: fn(rep) -> t,
+  from rep: rep,
+  in pipeline: fn(t) -> fn(fn(rep) -> sealed, rep) -> sealed,
+) -> sealed {
+  init(calculate_value, _, pipeline)
+  |> pipeline(calculate_value(rep))(rep)
 }
